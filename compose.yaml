@@ -1,0 +1,11 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: ./compose/dev/Dockerfile
+    container_name: rtnly-dev
+    profiles: [development]
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
