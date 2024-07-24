@@ -34,7 +34,7 @@ test:
 # Start development Docker compose
 dev-start:
 	@echo "🚀 Starting development Docker compose..."
-	docker compose --profile development up
+	docker compose --profile development up --build
 	@echo "✨ Development Docker compose started!"
 
 # Stop development Docker compose

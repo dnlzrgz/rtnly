@@ -31,3 +31,15 @@ repos:
             "--without-hashes",
           ]
         verbose: true
+      - id: poetry-export
+        args:
+          [
+            "--with",
+            "tests",
+            "-f",
+            "requirements.txt",
+            "-o",
+            "requirements/test.txt",
+            "--without-hashes",
+          ]
+        verbose: true
