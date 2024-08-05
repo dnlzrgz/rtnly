@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from app.config import settings
-from app.routers.habits import router as habits_router
 from app.routers.auth import router as auth_router
+from app.routers.habits import router as habits_router
 from app.init import init
 
 init()

@@ -8,6 +8,11 @@ from app.models import (
     HabitPublic,
     HabitsPublic,
     HabitUpdate,
+    Record,
+    RecordCreate,
+    RecordPublic,
+    RecordsPublic,
+    RecordUpdate,
     Message,
 )
 from app.dependencies import CurrentUser, SessionDep
@@ -134,3 +139,131 @@ async def delete_habit(
     session.commit()
 
     return Message(message="Habit deleted successfully")
+
+
+@router.get("/{habit_id}/records/", response_model=RecordsPublic)
+async def read_records_for_habit(
+    session: SessionDep,
+    current_user: CurrentUser,
+    habit_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+):
+    """
+    Retrieve record for specific habit.
+    """
+
+    habit = session.get(Habit, habit_id)
+    if not habit or habit.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found",
+        )
+
+    count_stmt = (
+        select(func.count()).select_from(Record).where(Record.habit_id == habit_id)
+    )
+    count = session.exec(count_stmt).one()
+
+    stmt = select(Record).where(Record.habit_id == habit_id).offset(skip).limit(limit)
+    records = session.exec(stmt).all()
+    return HabitsPublic(data=records, count=count)
+
+
+@router.post("/{habit_id}/records/", response_model=RecordPublic)
+async def create_record_for_habit(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    habit_id: uuid.UUID,
+    record_in: RecordCreate,
+):
+    """
+    Create record for specific habit.
+    """
+
+    habit = session.get(Habit, habit_id)
+    if not habit or habit.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found",
+        )
+
+    record = Record.model_validate(
+        record_in,
+        update={
+            "owner_id": current_user.id,
+            "habit_id": habit_id,
+        },
+    )
+
+    session.add(record)
+    session.commit()
+    session.refresh(record)
+
+    return record
+
+
+@router.get("/{habit_id}/records/{record_id}", response_model=RecordPublic)
+async def read_record_for_habit(
+    session: SessionDep,
+    current_user: CurrentUser,
+    habit_id: uuid.UUID,
+    record_id: uuid.UUID,
+):
+    """
+    Get specific record associated with a habit.
+    """
+
+    habit = session.get(Habit, habit_id)
+    if not habit or habit.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found",
+        )
+
+    record = session.get(Record, record_id)
+    if not record or record.habit_id != habit_id or record.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Record not found",
+        )
+
+    return record
+
+
+@router.put("/{habit_id}/records/{record_id}", response_model=RecordPublic)
+async def update_record_for_habit(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    habit_id: uuid.UUID,
+    record_id: uuid.UUID,
+    record_in: RecordUpdate,
+):
+    """
+    Update specific record.
+    """
+
+    habit = session.get(Habit, habit_id)
+    if not habit or habit.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found",
+        )
+
+    record = session.get(Record, record_id)
+    if not record or record.habit_id != habit_id or record.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Record not found",
+        )
+
+    update_dict = record_in.model_dump(exclude_unset=True)
+    record.sqlmodel_update(update_dict)
+
+    session.add(record)
+    session.commit()
+    session.refresh(record)
+
+    return record

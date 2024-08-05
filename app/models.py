@@ -44,7 +44,8 @@ class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
 
-    habits: list["Habit"] = Relationship(back_populates="owner")
+    habits: list["Habit"] = Relationship(back_populates="owner", cascade_delete=True)
+    records: list["Record"] = Relationship(back_populates="owner", cascade_delete=True)
 
 
 class UserPublic(UserBase):
@@ -61,13 +62,12 @@ class HabitBase(SQLModel):
     habit_type: HabitType = Field(default=HabitType.BINARY)
     achieved: bool = False
     archived: bool = False
+
     start_at: date = Field(default=datetime.now(timezone.utc).date())
 
 
 class HabitCreate(HabitBase):
-    name: str = Field(min_length=1, max_length=255)
-    habit_type: HabitType = Field(default=HabitType.BINARY)
-    start_at: date = Field(default=datetime.now(timezone.utc).date())
+    pass
 
 
 class HabitUpdate(HabitBase):
@@ -75,7 +75,9 @@ class HabitUpdate(HabitBase):
     habit_type: HabitType | None = Field(default=None)  # type: ignore
     achieved: bool | None = field(default=None)  # type: ignore
     archived: bool | None = field(default=None)  # type: ignore
+
     start_at: date | None = Field(default=None)  # type: ignore
+    last_updated_at: datetime = Field(default=datetime.now(timezone.utc))
 
 
 class Habit(HabitBase, table=True):
@@ -83,8 +85,14 @@ class Habit(HabitBase, table=True):
     created_at: datetime = Field(default=datetime.now(timezone.utc))
     last_updated_at: datetime = Field(default=datetime.now(timezone.utc))
 
-    owner_id: uuid.UUID = Field(foreign_key="user.id", nullable=False)
+    owner_id: uuid.UUID = Field(
+        foreign_key="user.id",
+        nullable=False,
+        ondelete="CASCADE",
+    )
     owner: User | None = Relationship(back_populates="habits")
+
+    records: list["Record"] = Relationship(back_populates="habit", cascade_delete=True)
 
 
 class HabitPublic(HabitBase):
@@ -94,6 +102,51 @@ class HabitPublic(HabitBase):
 
 class HabitsPublic(SQLModel):
     data: list[HabitPublic]
+    count: int
+
+
+class RecordBase(SQLModel):
+    completed: bool = False
+    value: int = 0
+    completed_at: datetime = Field(default=datetime.now(timezone.utc))
+
+
+class RecordCreate(RecordBase):
+    pass
+
+
+class RecordUpdate(RecordBase):
+    completed: bool | None = Field(default=None)  # type: ignore
+    value: int | None = Field(default=None)  # type: ignore
+    completed_at: datetime | None = Field(default=None)  # type: ignore
+
+
+class Record(RecordBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+
+    owner_id: uuid.UUID = Field(
+        foreign_key="user.id",
+        nullable=False,
+        ondelete="CASCADE",
+    )
+    owner: User | None = Relationship(back_populates="records")
+
+    habit_id: uuid.UUID = Field(
+        foreign_key="habit.id",
+        nullable=False,
+        ondelete="CASCADE",
+    )
+    habit: Habit | None = Relationship(back_populates="records")
+
+
+class RecordPublic(RecordBase):
+    id: uuid.UUID
+    owner_id: uuid.UUID
+    habit_id: uuid.UUID
+
+
+class RecordsPublic(SQLModel):
+    data: list[RecordPublic]
     count: int
 
 
